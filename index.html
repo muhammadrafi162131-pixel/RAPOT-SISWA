@@ -772,14 +772,23 @@
         "Produktif TKR": "B",
         "Mata Pelajaran Pilihan": "C"
     };
+// Import the functions you need from the SDKs you need
+import { initializeApp } from "firebase/app";
+// TODO: Add SDKs for Firebase products that you want to use
+// https://firebase.google.com/docs/web/setup#available-libraries
+
+// Your web app's Firebase configuration
 const firebaseConfig = {
   apiKey: "AIzaSyB6WmDIC1U0Ff17Z-6F6tFBgiaYT3FeDWs",
   authDomain: "rapot-siswa.firebaseapp.com",
   projectId: "rapot-siswa",
   storageBucket: "rapot-siswa.firebasestorage.app",
   messagingSenderId: "1009524996538",
-  appId: "1:1009524996538:web:b8202d80259fd4f79e0583"
+  appId: "1:1009524996538:web:534f4d77bc2055ef9e0583"
 };
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
     let dbNilaiSiswa = {};
     let dbDataTambahan = {};
 
