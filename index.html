@@ -350,17 +350,15 @@
 <div id="login-screen" class="login-container no-print">
     <img src="image_05f785.jpg" alt="Logo SMK" style="width: 80px; margin-bottom: 10px;">
     <h2>Login e-Rapor</h2>
-    <form id="loginForm" onsubmit="handleLogin(event)">
-        <div class="form-group">
-            <label for="username">Username / Nama Pengguna</label>
-            <input type="text" id="username" required placeholder="Masukkan username">
-        </div>
-        <div class="form-group" style="margin-top: 10px;">
-            <label for="password">Password / Kata Sandi</label>
-            <input type="password" id="password" required placeholder="Masukkan password">
-        </div>
-        <button type="submit" class="btn" style="width: 100%; margin-top: 20px; background-color: var(--primary);">Masuk Aplikasi 🔑</button>
-    </form>
+    <div class="form-group">
+        <label for="username">Username / Nama Pengguna</label>
+        <input type="text" id="username" placeholder="Masukkan username">
+    </div>
+    <div class="form-group" style="margin-top: 10px;">
+        <label for="password">Password / Kata Sandi</label>
+        <input type="password" id="password" placeholder="Masukkan password">
+    </div>
+    <button type="button" class="btn" style="width: 100%; margin-top: 20px; background-color: var(--primary);" onclick="handleLoginTanpaRefresh()">Masuk Aplikasi 🔑</button>
 </div>
 
 <div id="app-screen" class="main-container" style="display: none;">
