@@ -1176,6 +1176,21 @@ const app = initializeApp(firebaseConfig);
         document.getElementById('lbl_catatan_walas').innerText = sData.catatan_walas.trim() !== "" ? sData.catatan_walas : "-";
         document.getElementById('lbl_refleksi_orangtua').innerText = sData.refleksi_orangtua.trim() !== "" ? sData.refleksi_orangtua : "Diisi mandiri oleh orang tua/wali murid setelah dokumen hasil belajar dicetak.";
     }
+function handleLoginTanpaRefresh() {
+    const user = document.getElementById('username').value;
+    const pass = document.getElementById('password').value;
+
+    if(user.trim() !== "" && pass !== "") {
+        document.getElementById('user-logged').innerText = user;
+        document.getElementById('login-screen').style.style.display = 'none';
+        document.getElementById('app-screen').style.display = 'block';
+        
+        document.getElementById('username').value = '';
+        document.getElementById('password').value = '';
+    } else {
+        alert('Username dan Password wajib diisi!');
+    }
+}
 </script>
 
 </body>
