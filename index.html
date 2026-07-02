@@ -344,21 +344,26 @@
             }
         }
     </style>
+
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 </head>
 <body>
 
 <div id="login-screen" class="login-container no-print">
     <img src="image_05f785.jpg" alt="Logo SMK" style="width: 80px; margin-bottom: 10px;">
     <h2>Login e-Rapor</h2>
-    <div class="form-group">
-        <label for="username">Username / Nama Pengguna</label>
-        <input type="text" id="username" placeholder="Masukkan username">
-    </div>
-    <div class="form-group" style="margin-top: 10px;">
-        <label for="password">Password / Kata Sandi</label>
-        <input type="password" id="password" placeholder="Masukkan password">
-    </div>
-    <button type="button" class="btn" style="width: 100%; margin-top: 20px; background-color: var(--primary);" onclick="handleLoginTanpaRefresh()">Masuk Aplikasi 🔑</button>
+    <form id="loginForm" onsubmit="handleLogin(event)">
+        <div class="form-group">
+            <label for="username">Username / Nama Pengguna</label>
+            <input type="text" id="username" required placeholder="Masukkan username">
+        </div>
+        <div class="form-group" style="margin-top: 10px;">
+            <label for="password">Password / Kata Sandi</label>
+            <input type="password" id="password" required placeholder="Masukkan password">
+        </div>
+        <button type="submit" class="btn" style="width: 100%; margin-top: 20px; background-color: var(--primary);">Masuk Aplikasi 🔑</button>
+    </form>
 </div>
 
 <div id="app-screen" class="main-container" style="display: none;">
@@ -662,6 +667,20 @@
 </div>
 
 <script>
+    // INISIALISASI FIREBASE BERDASARKAN KONFIGURASI ANDA
+    const firebaseConfig = {
+      apiKey: "AIzaSyB6WmDIC1U0Ff17Z-6F6tFBgiaYT3FeDWs",
+      authDomain: "rapot-siswa.firebaseapp.com",
+      projectId: "rapot-siswa",
+      storageBucket: "rapot-siswa.firebasestorage.app",
+      messagingSenderId: "1009524996538",
+      appId: "1:1009524996538:web:b8202d80259fd4f79e0583"
+    };
+    
+    // Inisialisasi Firebase App & Database
+    firebase.initializeApp(firebaseConfig);
+    const database = firebase.database();
+
     function handleLogin(e) {
         e.preventDefault();
         const user = document.getElementById('username').value;
@@ -684,6 +703,11 @@
             document.getElementById('app-screen').style.display = 'none';
             document.getElementById('login-screen').style.display = 'block';
         }
+    }
+
+    // Pembersihan Karakter Khusus untuk Kunci Firebase agar tidak Error (karena Firebase tidak mengizinkan tanda '.' , '#', '$', '[', ']')
+    function cleanKey(key) {
+        return key.replace(/[\.\#\$\[\]]/g, "_");
     }
 
     const students = [
@@ -770,26 +794,11 @@
         "Produktif TKR": "B",
         "Mata Pelajaran Pilihan": "C"
     };
-// Import the functions you need from the SDKs you need
-import { initializeApp } from "firebase/app";
-// TODO: Add SDKs for Firebase products that you want to use
-// https://firebase.google.com/docs/web/setup#available-libraries
 
-// Your web app's Firebase configuration
-const firebaseConfig = {
-  apiKey: "AIzaSyB6WmDIC1U0Ff17Z-6F6tFBgiaYT3FeDWs",
-  authDomain: "rapot-siswa.firebaseapp.com",
-  projectId: "rapot-siswa",
-  storageBucket: "rapot-siswa.firebasestorage.app",
-  messagingSenderId: "1009524996538",
-  appId: "1:1009524996538:web:534f4d77bc2055ef9e0583"
-};
-
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
     let dbNilaiSiswa = {};
     let dbDataTambahan = {};
 
+    // Inisialisasi data lokal awal (Default)
     students.forEach(student => {
         dbNilaiSiswa[student] = {};
         Object.keys(bankMateri).forEach(m => {
@@ -812,8 +821,21 @@ const app = initializeApp(firebaseConfig);
         initDropdownGuru();
         initTabKolektif();
         initDropdownSiswa();
-        renderNilaiSiswaAktif();
-        loadDataTambahanSiswa();
+
+        // Ambil sinkronisasi Realtime data dari Firebase Cloud
+        database.ref('eRaporData').once('value').then((snapshot) => {
+            const cloudData = snapshot.val();
+            if (cloudData) {
+                if (cloudData.dbNilaiSiswa) dbNilaiSiswa = cloudData.dbNilaiSiswa;
+                if (cloudData.dbDataTambahan) dbDataTambahan = cloudData.dbDataTambahan;
+            }
+            // Render ulang komponen setelah data Cloud berhasil diambil
+            handleGuruChange();
+            renderNilaiSiswaAktif();
+            loadDataTambahanSiswa();
+        }).catch((error) => {
+            console.error("Gagal mengambil data dari Firebase: ", error);
+        });
     };
 
     function switchMainTab(tabIndex) {
@@ -849,7 +871,7 @@ const app = initializeApp(firebaseConfig);
             if (cellMapel) {
                 if (mapelTerpilih !== "") {
                     cellMapel.innerHTML = `<span style="font-weight:bold; color:#1f4e78;">${mapelTerpilih}</span>`;
-                    inputNilai.value = dbNilaiSiswa[student][mapelTerpilih] || "";
+                    inputNilai.value = dbNilaiSiswa[student][mapelTerpilih] !== undefined ? dbNilaiSiswa[student][mapelTerpilih] : "";
                     inputNilai.disabled = false;
                 } else {
                     cellMapel.innerHTML = `<span style="color:#aaa; font-style:italic;">Pilih guru dahulu</span>`;
@@ -914,14 +936,14 @@ const app = initializeApp(firebaseConfig);
         if (!student || !dbDataTambahan[student]) return;
 
         const data = dbDataTambahan[student];
-        document.getElementById('status_kenaikan').value = data.status_kenaikan;
-        document.getElementById('catatan_walas').value = data.catatan_walas;
-        document.getElementById('refleksi_orangtua').value = data.refleksi_orangtua;
-        document.getElementById('ekskul_nama').value = data.ekskul_nama;
-        document.getElementById('ekskul_ket').value = data.ekskul_ket;
-        document.getElementById('absen_sakit').value = data.sakit;
-        document.getElementById('absen_izin').value = data.izin;
-        document.getElementById('absen_alfa').value = data.alfa;
+        document.getElementById('status_kenaikan').value = data.status_kenaikan || "naik";
+        document.getElementById('catatan_walas').value = data.catatan_walas || "";
+        document.getElementById('refleksi_orangtua').value = data.refleksi_orangtua || "";
+        document.getElementById('ekskul_nama').value = data.ekskul_nama || "Pramuka";
+        document.getElementById('ekskul_ket').value = data.ekskul_ket || "";
+        document.getElementById('absen_sakit').value = data.sakit !== undefined ? data.sakit : 0;
+        document.getElementById('absen_izin').value = data.izin !== undefined ? data.izin : 0;
+        document.getElementById('absen_alfa').value = data.alfa !== undefined ? data.alfa : 0;
     }
 
     function saveDataTambahanSiswa() {
@@ -938,12 +960,15 @@ const app = initializeApp(firebaseConfig);
             izin: parseInt(document.getElementById('absen_izin').value) || 0,
             alfa: parseInt(document.getElementById('absen_alfa').value) || 0
         };
+
+        // Kirim perubahan data tambahan ke Firebase Cloud secara Realtime
+        database.ref('eRaporData/dbDataTambahan/' + cleanKey(student)).set(dbDataTambahan[student]);
     }
 
     function renderNilaiSiswaAktif() {
         const namaSiswaAktif = document.getElementById('nama_siswa').value;
         if (!namaSiswaAktif) return;
-        const dataNilaiSiswa = dbNilaiSiswa[namaSiswaAktif];
+        const dataNilaiSiswa = dbNilaiSiswa[namaSiswaAktif] || {};
 
         const tbodyA = document.getElementById('tbody-input-A');
         const tbodyB = document.getElementById('tbody-input-B');
@@ -954,7 +979,7 @@ const app = initializeApp(firebaseConfig);
         tbodyC.innerHTML = "";
 
         Object.keys(bankMateri).forEach(mapel => {
-            const nilaiAkhir = dataNilaiSiswa[mapel] !== undefined ? dataNilaiSiswa[mapel] : 0;
+            const nilaiAkhir = dataNilaiSiswa[mapel] !== undefined ? dataNilaiSiswa[mapel] : 80;
             const materiDefault = bankMateri[mapel];
             
             let tpTinggi = "-";
@@ -970,8 +995,8 @@ const app = initializeApp(firebaseConfig);
                 <tr data-mapel="${mapel}">
                     <td>${mapel}</td>
                     <td><input type="number" class="in-na in-table-num" value="${nilaiAkhir}" oninput="updateNilaiManualSiswa('${mapel}', this.value)"></td>
-                    <td><input type="text" class="in-tptinggi" id="high_${mapel.replace(/ /g, '_')}" value="${tpTinggi}"></td>
-                    <td><input type="text" class="in-tprendah" id="low_${mapel.replace(/ /g, '_')}" value="${tpRendah}"></td>
+                    <td><input type="text" class="in-tptinggi" id="high_${cleanKey(mapel)}" value="${tpTinggi}"></td>
+                    <td><input type="text" class="in-tprendah" id="low_${cleanKey(mapel)}" value="${tpRendah}"></td>
                 </tr>
             `;
 
@@ -989,10 +1014,11 @@ const app = initializeApp(firebaseConfig);
         const namaSiswaAktif = document.getElementById('nama_siswa').value;
         const nilaiNum = parseInt(value) || 0;
         
+        if(!dbNilaiSiswa[namaSiswaAktif]) dbNilaiSiswa[namaSiswaAktif] = {};
         dbNilaiSiswa[namaSiswaAktif][mapel] = nilaiNum;
 
-        const inputHigh = document.getElementById(`high_${mapel.replace(/ /g, '_')}`);
-        const inputLow = document.getElementById(`low_${mapel.replace(/ /g, '_')}`);
+        const inputHigh = document.getElementById(`high_${cleanKey(mapel)}`);
+        const inputLow = document.getElementById(`low_${cleanKey(mapel)}`);
         const materiDefault = bankMateri[mapel];
 
         if (nilaiNum >= 80) {
@@ -1002,6 +1028,9 @@ const app = initializeApp(firebaseConfig);
             inputHigh.value = "-";
             inputLow.value = materiDefault;
         }
+
+        // Kirim pembaruan nilai tunggal ke Firebase Cloud
+        database.ref('eRaporData/dbNilaiSiswa/' + cleanKey(namaSiswaAktif) + '/' + cleanKey(mapel)).set(nilaiNum);
     }
 
     function importKeTabDua() {
@@ -1019,6 +1048,7 @@ const app = initializeApp(firebaseConfig);
 
         let countImported = 0;
         let lastSelectedStudent = "";
+        let updatesCloud = {};
 
         students.forEach((student, index) => {
             const nilaiValue = document.getElementById(`nilai_val_${index}`).value;
@@ -1026,7 +1056,11 @@ const app = initializeApp(firebaseConfig);
             if (nilaiValue !== "") {
                 lastSelectedStudent = student; 
                 countImported++;
-                dbNilaiSiswa[student][mapelValue] = parseInt(nilaiValue) || 0;
+                const nilaiNum = parseInt(nilaiValue) || 0;
+                dbNilaiSiswa[student][mapelValue] = nilaiNum;
+                
+                // Siapkan data batch untuk dikirim ke Firebase
+                updatesCloud['eRaporData/dbNilaiSiswa/' + cleanKey(student) + '/' + cleanKey(mapelValue)] = nilaiNum;
             }
         });
 
@@ -1035,13 +1069,16 @@ const app = initializeApp(firebaseConfig);
             return;
         }
 
+        // Jalankan update massal ke Firebase Cloud
+        database.ref().update(updatesCloud);
+
         if (countImported === 1 && lastSelectedStudent !== "") {
             document.getElementById('nama_siswa').value = lastSelectedStudent;
         }
 
         renderNilaiSiswaAktif();
         loadDataTambahanSiswa();
-        alert(`Berhasil meng-import ${countImported} data nilai untuk mata pelajaran [ ${mapelValue} ]! Data telah disimpan ke Tab 2.`);
+        alert(`Berhasil meng-import ${countImported} data nilai untuk mata pelajaran [ ${mapelValue} ]! Data telah disimpan ke Cloud & Tab 2.`);
 
         switchMainTab(1);
         openSubSubAtauTab(2);
@@ -1100,7 +1137,6 @@ const app = initializeApp(firebaseConfig);
         return { html: htmlContent, nextIndex: globalIndex };
     }
 
-    // Fungsi Pembantu Konversi Format Tanggal Sistem ke Nama Bulan Indonesia Formal
     function formatTanggalIndonesia(dateString) {
         if (!dateString) return "Kepanjen, ........................";
         const date = new Date(dateString);
@@ -1136,7 +1172,6 @@ const app = initializeApp(firebaseConfig);
         document.getElementById('lbl_semester').innerText = document.getElementById('semester').value;
         document.getElementById('lbl_ta').innerText = document.getElementById('tahun_ajaran').value;
 
-        // Tampilkan format tanggal dinamis hasil pilihan input ke lembar cetak
         const inputTanggalValue = document.getElementById('tanggal_cetak').value;
         document.getElementById('lbl_tempat_tanggal').innerText = formatTanggalIndonesia(inputTanggalValue);
 
@@ -1159,12 +1194,12 @@ const app = initializeApp(firebaseConfig);
         let resC = prosesKelompokMapel("tbody-input-C", urutan, namaSiswa);
         tbodyPreview.innerHTML += resC.html;
 
-        const sData = dbDataTambahan[namaSiswa];
-        document.getElementById('lbl_ekskul').innerText = sData.ekskul_nama;
-        document.getElementById('lbl_ekskul_ket').innerText = sData.ekskul_ket;
-        document.getElementById('lbl_sakit').innerText = sData.sakit;
-        document.getElementById('lbl_izin').innerText = sData.izin;
-        document.getElementById('lbl_alfa').innerText = sData.alfa;
+        const sData = dbDataTambahan[namaSiswa] || {};
+        document.getElementById('lbl_ekskul').innerText = sData.ekskul_nama || "";
+        document.getElementById('lbl_ekskul_ket').innerText = sData.ekskul_ket || "";
+        document.getElementById('lbl_sakit').innerText = sData.sakit !== undefined ? sData.sakit : 0;
+        document.getElementById('lbl_izin').innerText = sData.izin !== undefined ? sData.izin : 0;
+        document.getElementById('lbl_alfa').innerText = sData.alfa !== undefined ? sData.alfa : 0;
 
         const lblKenaikan = document.getElementById('lbl_status_kenaikan');
         if (sData.status_kenaikan === "naik") {
@@ -1173,24 +1208,9 @@ const app = initializeApp(firebaseConfig);
             lblKenaikan.innerHTML = `<span style="color: red; font-weight: bold;">Ditetapkan TIDAK NAIK ke Kelas XI (Sebelas) karena belum memenuhi kriteria ketuntasan minimal.</span>`;
         }
 
-        document.getElementById('lbl_catatan_walas').innerText = sData.catatan_walas.trim() !== "" ? sData.catatan_walas : "-";
-        document.getElementById('lbl_refleksi_orangtua').innerText = sData.refleksi_orangtua.trim() !== "" ? sData.refleksi_orangtua : "Diisi mandiri oleh orang tua/wali murid setelah dokumen hasil belajar dicetak.";
+        document.getElementById('lbl_catatan_walas').innerText = (sData.catatan_walas && sData.catatan_walas.trim() !== "") ? sData.catatan_walas : "-";
+        document.getElementById('lbl_refleksi_orangtua').innerText = (sData.refleksi_orangtua && sData.refleksi_orangtua.trim() !== "") ? sData.refleksi_orangtua : "Diisi mandiri oleh orang tua/wali murid setelah dokumen hasil belajar dicetak.";
     }
-function handleLoginTanpaRefresh() {
-    const user = document.getElementById('username').value;
-    const pass = document.getElementById('password').value;
-
-    if(user.trim() !== "" && pass !== "") {
-        document.getElementById('user-logged').innerText = user;
-        document.getElementById('login-screen').style.style.display = 'none';
-        document.getElementById('app-screen').style.display = 'block';
-        
-        document.getElementById('username').value = '';
-        document.getElementById('password').value = '';
-    } else {
-        alert('Username dan Password wajib diisi!');
-    }
-}
 </script>
 
 </body>
